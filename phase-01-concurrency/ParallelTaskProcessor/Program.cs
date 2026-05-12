@@ -6,8 +6,10 @@ internal static class Program
 {
     private static void Main(string[] args)
     {
+        // Normalize the mode so input like "RACE" or " race " still works.
         var mode = args.Length > 0 ? args[0].Trim().ToLowerInvariant() : "race";
 
+        // Dispatch to a demo based on the mode argument.
         switch (mode)
         {
             case "race":

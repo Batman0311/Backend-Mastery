@@ -14,10 +14,12 @@ internal static class InMemoryConcurrencyDemo
         Console.WriteLine("Race condition demo (intentionally broken).");
         Console.WriteLine($"Expected counter = {iterations}.");
 
+        // Repeat to show nondeterministic results across runs.
         for (var trial = 1; trial <= 5; trial++)
         {
             var counter = 0;
 
+            // Many threads attempt to update shared state at once.
             Parallel.For(0, iterations, _ =>
             {
                 // Bug: ++ is not atomic; read-modify-write can interleave and lose updates.
@@ -37,6 +39,7 @@ internal static class InMemoryConcurrencyDemo
         Console.WriteLine("Race condition fixed with Interlocked.");
         Console.WriteLine($"Expected counter = {iterations}.");
 
+        // Same workload as the broken demo, but with an atomic increment.
         for (var trial = 1; trial <= 5; trial++)
         {
             var counter = 0;
@@ -59,6 +62,9 @@ internal static class InMemoryConcurrencyDemo
         var lockB = new object();
         var barrier = new Barrier(2);
 
+        // The barrier makes both tasks attempt the second lock at the same time.
+        // Task.Run queues work to the thread pool; tasks can run concurrently and often in parallel on multicore.
+        // This mirrors two real requests entering critical sections at the same time in production.
         var task1 = Task.Run(() =>
         {
             lock (lockA)
@@ -138,6 +144,7 @@ internal static class InMemoryConcurrencyDemo
         Console.WriteLine("Race condition fixed with lock.");
         Console.WriteLine($"Expected counter = {iterations}.");
 
+        // Locking is heavier than Interlocked but supports multi-step invariants.
         for (var trial = 1; trial <= 5; trial++)
         {
             var counter = 0;
@@ -163,6 +170,7 @@ internal static class InMemoryConcurrencyDemo
         Console.WriteLine("Concurrent collection demo with ConcurrentBag.");
         Console.WriteLine($"Expected count = {iterations}.");
 
+        // A thread-safe collection avoids manual locking for adds.
         var bag = new ConcurrentBag<int>();
 
         Parallel.For(0, iterations, i =>

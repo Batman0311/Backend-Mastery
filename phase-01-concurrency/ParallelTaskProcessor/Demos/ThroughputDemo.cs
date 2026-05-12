@@ -13,12 +13,14 @@ internal static class ThroughputDemo
     {
         Console.WriteLine("Throughput comparison (sequential vs parallel).");
 
+        // Build a deterministic job list so work is comparable.
         var jobs = new int[JobCount];
         for (var i = 0; i < jobs.Length; i++)
         {
             jobs[i] = i;
         }
 
+        // Run sequentially to establish a baseline.
         var sequential = Stopwatch.StartNew();
         foreach (var job in jobs)
         {
@@ -26,6 +28,7 @@ internal static class ThroughputDemo
         }
         sequential.Stop();
 
+        // Run in parallel using the thread pool.
         var parallel = Stopwatch.StartNew();
         Parallel.ForEach(jobs, job =>
         {

@@ -16,6 +16,7 @@ internal static class DatabaseConcurrencyDemo
         Console.WriteLine("Database race condition demo (intentionally broken).");
 
         using var context = CreateContext();
+        // Start from a known state so oversell is easy to observe.
         ResetInventory(context, sku1Quantity: 1, sku2Quantity: 1);
 
         var successes = 0;
@@ -25,6 +26,8 @@ internal static class DatabaseConcurrencyDemo
         {
             tasks[i] = Task.Run(() =>
             {
+                // Task.Run queues work to the thread pool so multiple workers can overlap.
+                // This simulates concurrent requests in production (e.g., many users buying the last item).
                 using var worker = CreateContext();
                 var item = worker.InventoryItems.Single(item => item.Sku == "SKU-1");
 
@@ -35,6 +38,7 @@ internal static class DatabaseConcurrencyDemo
 
                 // Bug: read-then-write without a concurrency check.
                 var newQuantity = item.Quantity - 1;
+                // Increase the chance of interleaving between read and write.
                 Thread.Sleep(30);
 
                 worker.Database.ExecuteSqlRaw(
@@ -61,6 +65,7 @@ internal static class DatabaseConcurrencyDemo
         Console.WriteLine("Database race condition fixed with optimistic concurrency.");
 
         using var context = CreateContext();
+        // Reset to a single available unit to expose oversell attempts.
         ResetInventory(context, sku1Quantity: 1, sku2Quantity: 1);
 
         var successes = 0;
@@ -70,8 +75,10 @@ internal static class DatabaseConcurrencyDemo
         {
             tasks[i] = Task.Run(() =>
             {
+                // Task.Run overlaps workers to create contention like real traffic spikes.
                 var retries = 0;
 
+                // Retry on concurrency conflicts to allow a clean winner.
                 while (retries < 5)
                 {
                     using var worker = CreateContext();
@@ -87,6 +94,7 @@ internal static class DatabaseConcurrencyDemo
 
                     try
                     {
+                        // SaveChanges uses the version column to detect conflicts.
                         worker.SaveChanges();
                         Interlocked.Increment(ref successes);
                         return;
@@ -115,9 +123,11 @@ internal static class DatabaseConcurrencyDemo
         Console.WriteLine("SQLite uses database-level locks, so we reproduce lock contention.");
 
         using var context = CreateContext();
+        // Seed two rows to enable a two-step reservation workflow.
         ResetInventory(context, sku1Quantity: 5, sku2Quantity: 5);
 
         var failures = 0;
+        // Task.Run makes both reservations overlap to reproduce lock contention.
         var task1 = Task.Run(() => RunTwoStepReservation("SKU-1", "SKU-2", ref failures));
         var task2 = Task.Run(() => RunTwoStepReservation("SKU-2", "SKU-1", ref failures));
 
@@ -133,9 +143,11 @@ internal static class DatabaseConcurrencyDemo
         Console.WriteLine("We keep the same order for both operations and use a small retry for lock timeouts.");
 
         using var context = CreateContext();
+        // Same starting point as the broken demo for a fair comparison.
         ResetInventory(context, sku1Quantity: 5, sku2Quantity: 5);
 
         var failures = 0;
+        // Overlapping tasks reflect two requests hitting the same hot rows.
         var task1 = Task.Run(() => RunTwoStepReservation("SKU-1", "SKU-2", ref failures, sameOrder: true));
         var task2 = Task.Run(() => RunTwoStepReservation("SKU-1", "SKU-2", ref failures, sameOrder: true));
 
@@ -148,6 +160,7 @@ internal static class DatabaseConcurrencyDemo
     private static AppDbContext CreateContext()
     {
         var dbPath = Path.Combine(AppContext.BaseDirectory, "phase1.db");
+        // Each call creates a new context to mimic separate requests.
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlite($"Data Source={dbPath}")
             .Options;
@@ -157,6 +170,7 @@ internal static class DatabaseConcurrencyDemo
 
     private static void ResetInventory(AppDbContext context, int sku1Quantity, int sku2Quantity)
     {
+        // Recreate the database so each run starts fresh.
         context.Database.EnsureDeleted();
         context.Database.EnsureCreated();
 
@@ -181,6 +195,7 @@ internal static class DatabaseConcurrencyDemo
     {
         var attempts = 0;
 
+        // Loop to handle transient lock timeouts.
         while (attempts < 3)
         {
             try
@@ -190,9 +205,11 @@ internal static class DatabaseConcurrencyDemo
 
                 using var transaction = worker.Database.BeginTransaction();
 
+                // First reservation holds the transaction open.
                 ReserveOne(worker, firstSku);
                 Thread.Sleep(200);
 
+                // When sameOrder is true, both tasks reserve in the same order.
                 var second = sameOrder ? "SKU-2" : secondSku;
                 ReserveOne(worker, second);
 
@@ -201,11 +218,13 @@ internal static class DatabaseConcurrencyDemo
             }
             catch (SqliteException ex) when (ex.SqliteErrorCode == 5)
             {
+                // SQLite error code 5 = database is locked.
                 attempts++;
                 Thread.Sleep(100);
             }
             catch (DbUpdateException)
             {
+                // Other update conflicts are treated as transient here.
                 attempts++;
             }
         }
@@ -221,6 +240,7 @@ internal static class DatabaseConcurrencyDemo
             return;
         }
 
+        // Update both quantity and version so optimistic concurrency can detect conflicts.
         item.Quantity -= 1;
         item.Version += 1;
         context.SaveChanges();

@@ -54,6 +54,66 @@ A race condition happens when multiple threads read and write shared state witho
   - Selected fix and why:
     - Enforce lock ordering because it prevents cycles and is a standard enterprise practice; add small retries for transient locks.
 
+## Demo Modes and Methods
+- **race** (`dotnet run -- race`)
+  - Calls: `InMemoryConcurrencyDemo.RunRaceConditionDemo()`
+  - Demonstrates a shared counter update with `++` inside `Parallel.For`, which loses updates due to interleaving.
+- **race-fixed** (`dotnet run -- race-fixed`)
+  - Calls: `InMemoryConcurrencyDemo.RunRaceConditionFixed()`
+  - Uses `Interlocked.Increment` to make the increment atomic.
+- **race-lock** (`dotnet run -- race-lock`)
+  - Calls: `InMemoryConcurrencyDemo.RunRaceConditionFixedWithLock()`
+  - Serializes increments with a `lock` for correctness when multi-step invariants exist.
+- **race-concurrent** (`dotnet run -- race-concurrent`)
+  - Calls: `InMemoryConcurrencyDemo.RunConcurrentCollectionDemo()`
+  - Uses `ConcurrentBag` to show safe concurrent collection writes.
+- **deadlock** (`dotnet run -- deadlock`)
+  - Calls: `InMemoryConcurrencyDemo.RunDeadlockDemo()`
+  - Creates circular wait by acquiring `lockA` then `lockB` in one task and the reverse order in another.
+- **deadlock-fixed** (`dotnet run -- deadlock-fixed`)
+  - Calls: `InMemoryConcurrencyDemo.RunDeadlockFixed()`
+  - Enforces consistent lock ordering (A then B) to avoid circular wait.
+- **db-race** (`dotnet run -- db-race`)
+  - Calls: `DatabaseConcurrencyDemo.RunDatabaseRaceConditionDemo()`
+  - Demonstrates oversell when two workers read the same row and update without concurrency checks.
+- **db-fixed** (`dotnet run -- db-fixed`)
+  - Calls: `DatabaseConcurrencyDemo.RunDatabaseRaceConditionFixed()`
+  - Adds optimistic concurrency using a version column with retry on conflicts.
+- **db-deadlock** (`dotnet run -- db-deadlock`)
+  - Calls: `DatabaseConcurrencyDemo.RunDatabaseDeadlockDemo()`
+  - Simulates lock contention by updating two SKUs in opposite order inside a transaction.
+- **db-deadlock-fixed** (`dotnet run -- db-deadlock-fixed`)
+  - Calls: `DatabaseConcurrencyDemo.RunDatabaseDeadlockFixed()`
+  - Uses consistent row order plus retries to reduce contention.
+- **throughput** (`dotnet run -- throughput`)
+  - Calls: `ThroughputDemo.RunThroughputComparison()`
+  - Compares sequential vs parallel processing for CPU-bound work.
+
+## Demo Walkthroughs (Step by Step)
+### Race Condition (In-Memory)
+1. Initialize a local counter per trial.
+2. Run `Parallel.For` to simulate high contention on the counter.
+3. Observe a counter smaller than the expected total (lost updates).
+4. Apply the fix with `Interlocked` or `lock` and re-run.
+
+### Deadlock (In-Memory)
+1. Create two locks and a `Barrier` to align timing.
+2. Acquire locks in opposite order across two tasks.
+3. Observe timeout because both tasks wait on each other.
+4. Fix by acquiring locks in the same order.
+
+### Database Oversell (SQLite)
+1. Reset inventory and set quantity to 1 for SKU-1.
+2. Fire multiple tasks that read then update without concurrency checks.
+3. Observe more than one successful reservation.
+4. Fix by using optimistic concurrency and retry on conflicts.
+
+### Database Lock Contention (SQLite)
+1. Reset inventory and open two transactions.
+2. Update SKUs in opposite order to create lock contention.
+3. Observe lock failures or delays.
+4. Fix by enforcing a single row order and retrying transient locks.
+
 ## Cross-Questions
 - Why does a race condition sometimes appear and sometimes not?
 - When should you prefer `Interlocked` over a `lock`?
