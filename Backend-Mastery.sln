@@ -6,6 +6,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "phase-01-concurrency", "pha
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParallelTaskProcessor", "phase-01-concurrency\ParallelTaskProcessor\ParallelTaskProcessor.csproj", "{286C89C0-2F04-A5B2-118F-88371AFEDE83}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "phase-02-locking", "phase-02-locking", "{A5A2D0E7-845F-4178-8AE3-15F4F0A27001}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InventoryService", "phase-02-locking\InventoryService\InventoryService.csproj", "{57757F5F-1464-4475-8856-31E3F1C76280}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -16,12 +20,17 @@ Global
 		{286C89C0-2F04-A5B2-118F-88371AFEDE83}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{286C89C0-2F04-A5B2-118F-88371AFEDE83}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{286C89C0-2F04-A5B2-118F-88371AFEDE83}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57757F5F-1464-4475-8856-31E3F1C76280}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57757F5F-1464-4475-8856-31E3F1C76280}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57757F5F-1464-4475-8856-31E3F1C76280}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57757F5F-1464-4475-8856-31E3F1C76280}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{286C89C0-2F04-A5B2-118F-88371AFEDE83} = {FEA2CBD5-5B52-EA06-D0F4-1194951E9C07}
+		{57757F5F-1464-4475-8856-31E3F1C76280} = {A5A2D0E7-845F-4178-8AE3-15F4F0A27001}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C5C6BE7A-0227-4DBF-A705-CA891E60BF8D}
