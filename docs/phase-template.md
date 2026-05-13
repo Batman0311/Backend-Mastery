@@ -100,7 +100,8 @@ phase-xx-name/
 ```
 
 ## Code Guidelines
-- Keep Program.cs limited to the Main entry point and routing only.
+- Keep Program.cs limited to service registration and endpoint routing only.
+- For Web APIs, move request handling into Controllers/ classes.
 - Move all demo logic into files under Demos/.
 - Add short comments where behavior is non-obvious, especially where code is intentionally buggy.
 - When using `Task.Run`, add a brief comment that explains thread-pool concurrency and why overlapping work reproduces the bug in real systems.
