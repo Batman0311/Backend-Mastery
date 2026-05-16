@@ -24,3 +24,4 @@ applyTo: "**"
 - At the method level, add a short comment describing the production scenario it represents.
 - Add a short comment where the timing window happens (read-modify-write, lock order, transaction overlap).
 - Provide a fixed variant for each bug in the same demo file or a paired demo file.
+- If a phase explicitly requests line-by-line comments, add them only for that phase.
