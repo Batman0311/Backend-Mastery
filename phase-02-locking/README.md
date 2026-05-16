@@ -115,10 +115,51 @@
   - Pitfalls: lock timeouts and stale locks if not released.
   - Fix: use a lock TTL and fencing tokens when using Redis.
 
+## Revision: Locking Strategies
+The same oversell bug can be solved with three families of strategies. Optimistic locking detects conflicts after a read and retries, which keeps throughput high for read-heavy workloads. Pessimistic locking prevents conflicts by serializing access to the row, which is safer under heavy contention but reduces throughput. Distributed locking extends mutual exclusion across instances, but adds failure modes such as lock expiry and requires safe release with tokens and TTLs.
+
+### Main Code Example: Optimistic Reservation Retry
+```csharp
+for (var attempt = 1; attempt <= maxAttempts; attempt++)
+{
+  var item = await db.InventoryItems.SingleAsync(i => i.Sku == sku);
+  if (item.Quantity <= 0)
+  {
+    return ReservationResult.Conflict("out_of_stock");
+  }
+
+  item.Quantity -= qty;
+  item.Version += 1;
+
+  try
+  {
+    await db.SaveChangesAsync();
+    return ReservationResult.Success();
+  }
+  catch (DbUpdateConcurrencyException)
+  {
+    // Retry with fresh state.
+  }
+}
+```
+
+## Interview Questions and Answers (Senior Level)
+- How do isolation levels influence optimistic vs pessimistic strategies? Answer: lower isolation increases anomalies (lost updates, write skew), which optimistic checks can detect; pessimistic locks reduce anomalies but can increase blocking and deadlock risk.
+- How do you prevent retry storms with optimistic concurrency? Answer: use bounded retries with exponential backoff and jitter, add per-SKU throttling, and fall back to pessimistic or queued processing for hot items.
+- When does a single-statement atomic update outperform version checks? Answer: when the invariant can be encoded in the WHERE clause, because it avoids read-before-write and removes the retry loop.
+- What data-layer constraints should complement application-level locking? Answer: unique constraints, CHECK constraints, and idempotency keys provide last-line defense against bugs or partial failures.
+- How do you choose between pessimistic locks and queues for a hot SKU? Answer: pessimistic locks still allow parallel reads and simpler integration, while queues provide strict ordering at the cost of latency and operational complexity.
+
+## Pitfalls (Senior Level)
+- Retrying without backoff, which amplifies contention and can collapse throughput under burst traffic.
+- Holding transactions open across network calls, which lengthens lock duration and increases deadlock probability.
+- Relying on in-process locks in a multi-instance deployment, which silently fails under load balancers.
+- Ignoring idempotency on reservation endpoints, which causes duplicate writes when clients retry.
+
 ## Cross-Questions
-- When is optimistic locking slower than pessimistic locking?
-- Why does a conflict exception need retries to be useful?
-- How does distributed locking fail if the lock holder crashes?
+- When is optimistic locking slower than pessimistic locking? Answer: during high write contention where retries dominate latency and waste work.
+- Why does a conflict exception need retries to be useful? Answer: the exception only signals a collision; a retry with fresh state is the actual recovery path.
+- How does distributed locking fail if the lock holder crashes? Answer: the lock can remain until TTL expiry and stale owners can write unless fenced or guarded.
 
 ## Code Examples (to add during implementation)
 - Example: naive reservation vs optimistic reservation

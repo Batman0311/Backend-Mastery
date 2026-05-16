@@ -133,10 +133,41 @@
   - Pitfalls: missing token check reintroduces stale writes.
   - Fix: enforce `LastFencingToken < token` on update.
 
+## Revision: Distributed Locking in Multi-Instance APIs
+In a multi-instance deployment, local locks do not coordinate across nodes, so the same SKU can be reserved concurrently. A Redis lock provides mutual exclusion across instances, but lock expiry introduces a stale-owner risk when the slow holder finishes after a newer owner has acquired the lock. Fencing tokens solve this by adding a monotonic write-order check at the database, so late writers are rejected even if they still run.
+
+### Main Code Example: Fencing Token Guard
+```csharp
+var token = await lockProvider.AcquireAsync(lockKey, ttl);
+var item = await db.InventoryItems.SingleAsync(i => i.Sku == sku);
+
+if (item.LastFencingToken >= token)
+{
+  return ReservationResult.Conflict("stale_owner");
+}
+
+item.LastFencingToken = token;
+item.Quantity -= qty;
+await db.SaveChangesAsync();
+```
+
+## Interview Questions and Answers (Senior Level)
+- Why is Redis locking not a substitute for transaction isolation? Answer: it provides mutual exclusion but does not guarantee linearizability across failures; stale owners can still write unless the data layer enforces ordering.
+- What is the main benefit of fencing tokens? Answer: they move correctness into the data layer by enforcing monotonic write ordering, so late writers are rejected even if they still run.
+- How would you evaluate Redlock or other quorum-based locks? Answer: validate the safety requirements, clock assumptions, and failure model; if correctness is critical, prefer a single authoritative store with fencing checks.
+- How do you set TTL values for distributed locks? Answer: base it on the 99th percentile critical-section time plus safety margin, and add renewal or chunking for long operations.
+- What is a safe fallback when Redis is degraded? Answer: fail fast, degrade to read-only, or switch to DB-guarded atomic updates with idempotency to avoid double writes.
+
+## Pitfalls (Senior Level)
+- Assuming lock ownership implies write safety, which fails under TTL expiry or process pauses.
+- Using long TTLs to avoid expiry, which increases contention and slows recovery after crashes.
+- Releasing locks without owner tokens, which allows one instance to release another's lock.
+- Performing critical writes outside the fenced section, which reintroduces stale-owner bugs.
+
 ## Cross-Questions
-- When is a queue-based worker better than a Redis lock?
-- How does fencing differ from a lock lease renewal?
-- What happens if Redis is unavailable during a reservation burst?
+- When is a queue-based worker better than a Redis lock? Answer: when you need strict ordering, replay, and controlled throughput per SKU.
+- How does fencing differ from a lock lease renewal? Answer: fencing rejects stale writers at the data layer, while renewal only extends the lock lease.
+- What happens if Redis is unavailable during a reservation burst? Answer: lock acquisition fails, so you should fail fast, fall back to DB guards, or queue and throttle.
 
 ## Code Examples (to add during implementation)
 - Redis lock acquire with safe release (Lua script)

@@ -125,10 +125,40 @@
   - Pitfalls: none in this demo.
   - Fix: not applicable.
 
+## Revision: Query Composition and Predicates
+Custom LINQ implementations must preserve deferred execution or they silently change performance and side effects. When composing predicates for `IQueryable<T>`, expressions must share the same parameter instance; otherwise, the provider sees unbound parameters and throws. Predicate composition therefore requires parameter rebinding (or a known library) to keep queries provider-friendly and translatable.
+
+### Main Code Example: Safe Predicate Composition
+```csharp
+Expression<Func<Item, bool>> left = i => i.Price > 100;
+Expression<Func<Item, bool>> right = i => i.InStock;
+
+var parameter = Expression.Parameter(typeof(Item), "i");
+var leftBody = new RebindVisitor(left.Parameters[0], parameter).Visit(left.Body);
+var rightBody = new RebindVisitor(right.Parameters[0], parameter).Visit(right.Body);
+
+var combined = Expression.Lambda<Func<Item, bool>>(
+  Expression.AndAlso(leftBody!, rightBody!),
+  parameter);
+```
+
+## Interview Questions and Answers (Senior Level)
+- How do you decide between `IEnumerable<T>` and `IQueryable<T>` in a repository? Answer: use `IQueryable<T>` only when the caller must compose provider-translatable filters; otherwise return `IEnumerable<T>` to avoid leaking provider-specific behavior.
+- What is the impact of deferred execution on side effects and observability? Answer: side effects run at enumeration time, so logging and metrics appear later and can be triggered multiple times if the sequence is re-enumerated.
+- Why can `Expression.Invoke` reduce translation capability? Answer: many LINQ providers cannot translate invocation nodes, leading to client-side evaluation or runtime exceptions.
+- How do closures affect expression trees? Answer: captured variables become fields on a closure object, which can lead to unexpected constant parameters and cache-miss behavior in compiled queries.
+- When is it safe to compile expressions to delegates? Answer: when you are executing in-memory and do not need provider translation; compiling for `IQueryable<T>` removes server-side execution.
+
+## Pitfalls (Senior Level)
+- Multiple enumeration of a deferred sequence, which repeats work and side effects unexpectedly.
+- Mixing `IQueryable<T>` and `IEnumerable<T>` operators, which can force client-side evaluation and load large datasets.
+- Caching expression trees with captured state, which produces stale filters across requests.
+- Implementing custom `Where` without preserving laziness, which changes performance and correctness.
+
 ## Cross-Questions
-- When should you prefer `IQueryable<T>` over `IEnumerable<T>`?
-- Why does deferred execution matter for performance and correctness?
-- How does parameter rebinding keep expressions provider-friendly?
+- When should you prefer `IQueryable<T>` over `IEnumerable<T>`? Answer: when the query must be translated by a provider to run remotely.
+- Why does deferred execution matter for performance and correctness? Answer: it delays work until needed and keeps side effects tied to enumeration order.
+- How does parameter rebinding keep expressions provider-friendly? Answer: it unifies parameters so the provider sees a single, valid expression tree.
 
 ## Code Examples (to add during implementation)
 - Custom `Where` with `yield return`.

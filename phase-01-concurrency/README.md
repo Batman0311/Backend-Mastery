@@ -114,11 +114,44 @@ A race condition happens when multiple threads read and write shared state witho
 3. Observe lock failures or delays.
 4. Fix by enforcing a single row order and retrying transient locks.
 
+## Revision: Concurrency Fundamentals
+Concurrency is about overlapping work; parallelism is about simultaneous execution. The core failure pattern across these demos is a non-atomic read-modify-write on shared state, or inconsistent lock ordering across multiple locks. The production-safe fixes align with three rules: make the update atomic (`Interlocked`), serialize access to a critical section (`lock`/`Monitor`), or enforce a single lock acquisition order to prevent cycles. When persistence is involved, row-level concurrency controls (optimistic version checks or atomic update guards) replace in-memory locks because multiple processes can touch the same rows.
+
+### Main Code Example: Atomic vs Non-Atomic Increment
+```csharp
+var counter = 0;
+
+Parallel.For(0, iterations, _ =>
+{
+  // Bug: read-modify-write is not atomic.
+  counter++;
+});
+
+Parallel.For(0, iterations, _ =>
+{
+  // Fix: atomic increment prevents lost updates.
+  Interlocked.Increment(ref counter);
+});
+```
+
+## Interview Questions and Answers (Senior Level)
+- How does the .NET memory model affect the visibility of shared data between threads? Answer: without synchronization (e.g., `lock`, `Interlocked`, `Volatile`), reads can observe stale values due to reordering and caching; synchronization establishes happens-before edges that make updates visible.
+- When would you avoid `lock` and use lock-free primitives instead? Answer: for very small critical sections with high contention where blocking causes latency spikes, but only if the update can be expressed as atomic operations and you can prove correctness under ABA and reordering risks.
+- How would you detect and mitigate deadlocks in production systems? Answer: instrument lock acquisition timing, add timeouts with diagnostics, enforce a global lock order, and use circuit breakers or fail-fast logic to prevent thread pool exhaustion during deadlock storms.
+- How do you reason about throughput when using `Parallel.For` on CPU-bound workloads? Answer: apply Amdahl's law, cap parallelism to core count, and avoid oversubscription that causes context switching and cache thrash.
+- What is the tradeoff between fairness and throughput in locking? Answer: fair locks reduce starvation but often lower throughput due to queueing; unfair locks can be faster but risk long-tail latency.
+
+## Pitfalls (Senior Level)
+- Mixing `lock` and `Interlocked` on the same state without a clear ownership model, which can produce inconsistent invariants.
+- Holding locks while performing I/O or waiting on async work, which blocks thread-pool threads and amplifies contention.
+- Using a single global lock for unrelated resources, which hides bugs but destroys parallelism under load.
+- Ignoring cancellation and timeouts in contention paths, leading to request pileups and thread pool starvation.
+
 ## Cross-Questions
-- Why does a race condition sometimes appear and sometimes not?
-- When should you prefer `Interlocked` over a `lock`?
-- How can lock ordering policies be enforced in a larger codebase?
-- What is the difference between CPU-bound and IO-bound work for parallelism?
+- Why does a race condition sometimes appear and sometimes not? Answer: the scheduler, timing windows, and cache effects decide whether the interleaving exposes the bug.
+- When should you prefer `Interlocked` over a `lock`? Answer: when you need a single atomic update and can avoid multi-step invariants or compound state.
+- How can lock ordering policies be enforced in a larger codebase? Answer: define a lock hierarchy, wrap acquisitions in shared helpers, and add tests or analyzers that detect order violations.
+- What is the difference between CPU-bound and IO-bound work for parallelism? Answer: CPU-bound tasks scale to core count, while IO-bound tasks benefit from async overlaps and can scale with higher concurrency.
 
 ## Code Examples (to add during implementation)
 - Example: sequential vs parallel execution comparison
