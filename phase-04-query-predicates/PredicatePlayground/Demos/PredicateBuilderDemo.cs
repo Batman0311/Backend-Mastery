@@ -14,10 +14,12 @@ public static class PredicateBuilderDemo
 
         var products = SampleProducts();
 
+        // Keep filters as expressions so a query provider can translate them.
         Expression<Func<Product, bool>> inStock = product => product.Stock > 0;
         Expression<Func<Product, bool>> nameHasA = product => product.Name.Contains('A');
 
         // Intentional bug: combining expressions without rebinding parameters.
+        // This creates an invalid tree because parameters are from different lambdas.
         var combined = PredicateBuilder.OrBug(inStock, nameHasA);
 
         try
@@ -39,9 +41,11 @@ public static class PredicateBuilderDemo
 
         var products = SampleProducts();
 
+        // Reuse the same filter shapes; the fix happens in the builder.
         Expression<Func<Product, bool>> inStock = product => product.Stock > 0;
         Expression<Func<Product, bool>> nameHasA = product => product.Name.Contains('A');
 
+        // Rebind parameters to a shared one so the tree is valid.
         var combined = PredicateBuilder.OrFixed(inStock, nameHasA);
         var result = products.AsQueryable().Where(combined).ToList();
 
@@ -73,11 +77,13 @@ public static class PredicateBuilder
     public static Expression<Func<T, bool>> OrBug<T>(Expression<Func<T, bool>> left, Expression<Func<T, bool>> right)
     {
         var body = Expression.OrElse(left.Body, right.Body);
+        // This uses only the left parameter list, leaving the right unbound.
         return Expression.Lambda<Func<T, bool>>(body, left.Parameters);
     }
 
     public static Expression<Func<T, bool>> OrFixed<T>(Expression<Func<T, bool>> left, Expression<Func<T, bool>> right)
     {
+        // Create a shared parameter to stitch both sides together.
         var parameter = Expression.Parameter(typeof(T), "x");
         var leftBody = new ParameterReplacer(left.Parameters[0], parameter).Visit(left.Body);
         var rightBody = new ParameterReplacer(right.Parameters[0], parameter).Visit(right.Body);
@@ -97,6 +103,7 @@ public static class PredicateBuilder
             _target = target;
         }
 
+        // Replace only the target parameter to keep other nodes intact.
         protected override Expression VisitParameter(ParameterExpression node)
         {
             return node == _source ? _target : base.VisitParameter(node);

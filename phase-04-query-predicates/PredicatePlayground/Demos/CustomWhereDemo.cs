@@ -12,6 +12,7 @@ public static class CustomWhereDemo
         Console.WriteLine("Mode: where-bug");
 
         var numbers = Enumerable.Range(1, 5);
+        // Eager filter runs immediately, before any consumer iterates.
         var filtered = numbers.CustomWhereEager(n =>
         {
             Console.WriteLine($"Evaluating {n}");
@@ -33,6 +34,7 @@ public static class CustomWhereDemo
         Console.WriteLine("Mode: where-fixed");
 
         var numbers = Enumerable.Range(1, 5);
+        // Lazy filter defers evaluation until enumeration begins.
         var filtered = numbers.CustomWhereLazy(n =>
         {
             Console.WriteLine($"Evaluating {n}");
@@ -89,11 +91,13 @@ public static class WhereExtensions
             throw new ArgumentNullException(nameof(predicate));
         }
 
+        // Iterator defers work to the point of enumeration.
         return CustomWhereLazyIterator(source, predicate);
     }
 
     private static IEnumerable<int> CustomWhereLazyIterator(IEnumerable<int> source, Func<int, bool> predicate)
     {
+        // Yield results one-by-one to preserve deferred execution semantics.
         foreach (var item in source)
         {
             if (predicate(item))

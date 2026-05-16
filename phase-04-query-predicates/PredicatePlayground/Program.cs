@@ -1,5 +1,6 @@
 ﻿using PredicatePlayground.Demos;
 
+// Mode is driven by the first CLI arg to keep the demos easy to run.
 var mode = args.Length > 0 ? args[0].Trim().ToLowerInvariant() : "help";
 
 switch (mode)
@@ -21,6 +22,7 @@ switch (mode)
 		break;
 }
 
+// Help output lives here so demo code stays focused on predicate behavior.
 static void PrintUsage()
 {
 	Console.WriteLine("PredicatePlayground modes:");
