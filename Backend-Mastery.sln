@@ -18,6 +18,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "phase-04-query-predicates",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PredicatePlayground", "phase-04-query-predicates\PredicatePlayground\PredicatePlayground.csproj", "{E636F53D-F437-4612-BABF-BDE9A6E06E67}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "phase-05-factory-resolver", "phase-05-factory-resolver", "{EBF68AC6-B62A-4D92-A83A-AB56F97147EB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ResolverFactory", "phase-05-factory-resolver\ResolverFactory\ResolverFactory.csproj", "{443A0139-3114-43BB-8DD2-72737E595AE5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -40,6 +44,10 @@ Global
 		{E636F53D-F437-4612-BABF-BDE9A6E06E67}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E636F53D-F437-4612-BABF-BDE9A6E06E67}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E636F53D-F437-4612-BABF-BDE9A6E06E67}.Release|Any CPU.Build.0 = Release|Any CPU
+		{443A0139-3114-43BB-8DD2-72737E595AE5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{443A0139-3114-43BB-8DD2-72737E595AE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{443A0139-3114-43BB-8DD2-72737E595AE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{443A0139-3114-43BB-8DD2-72737E595AE5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -49,6 +57,7 @@ Global
 		{57757F5F-1464-4475-8856-31E3F1C76280} = {A5A2D0E7-845F-4178-8AE3-15F4F0A27001}
 		{62C2E463-9A61-4FE1-9F1B-3A9E0783C90D} = {7D1FA18F-2A1B-4C24-8F0B-02C63CE91164}
 		{E636F53D-F437-4612-BABF-BDE9A6E06E67} = {6526CEF5-E5F2-4B6B-BFF8-98BA11A005E3}
+		{443A0139-3114-43BB-8DD2-72737E595AE5} = {EBF68AC6-B62A-4D92-A83A-AB56F97147EB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C5C6BE7A-0227-4DBF-A705-CA891E60BF8D}
